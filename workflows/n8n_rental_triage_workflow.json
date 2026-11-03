@@ -1,0 +1,229 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "novo-aluguel",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d66679b2-e639-45d2-965b-29008d2acab2",
+      "name": "Webhook",
+      "webhookId": "b26a26ee-3db8-483f-9256-23525cea7141"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é o agente de autoatendimento exclusivo para Aluguel de Carrinhos de Picolé da Oggi Sorvetes Barueri.\nAnalise os dados da reserva, o estado atual da conversa e a última mensagem enviada pelo cliente para decidir o próximo passo.\n\n### REGRAS DE NEGÓCIO (BASE DE CONHECIMENTO):\n- Capacidade: 1 carrinho comporta até 200 picolés. Acima disso, são necessários 2 carrinhos.\n- Comodato: R$ 2.500,00 por carrinho (responsabilidade declarada em contrato).\n- Autonomia térmica: Até 6 horas fechado (placas eutéticas congeladas).\n- Devolução: No mesmo dia ou dia seguinte ao evento até 20h (Seg-Sáb) ou 17h (Dom/Feriados). Multa por atraso: R$ 50,00/dia.\n- Logística:\n  1. Retirada na loja (Grátis): Av. Henriqueta Mendes Guerra, 1330 - Centro, Barueri (exige veículo com porta-malas espaçoso ou banco rebatível).\n  2. Entrega terceirizada: O frete é calculado pela loja e passado ao cliente após o aceite e pagamento quem efetua o pagamento ao entregador é a loja tanto na ida quanto na volta\n- Pagamento dos sorvetes: O cliente escolhe entre (A) Adiantar agora via Pix ou (B) Pagar no dia do evento no balcão (cartão, dinheiro ou Pix).\n- Transbordo Humano: Se o cliente pedir desconto, quiser negociar regras, alterar sabores sem definição ou fizer perguntas fora deste escopo, defina \"acionar_humano\": true.\n\n### DADOS RECEBIDOS DO SISTEMA:\n- ID da Reserva: {{ $json.body.reserva_id }}\n- Cliente: {{ $json.body.cliente }}\n- Data do Evento: {{ $json.body.data_evento }}\n- Valor dos Sorvetes: R$ {{ $json.body.valor_pedido }}\n- Total de Picolés: {{ $json.body.total_sorvetes }}\n- Endereço do Evento: {{ $json.body.endereco }}\n- Estado Atual da Conversa: {{ $json.body.estado_atual }}\n- Mensagem do Cliente: \"{{ $json.body.mensagem_cliente }}\"\n\n### LÓGICA DE TRANSIÇÃO DE ESTADOS:\n1. Se Estado Atual for \"INICIO\" ou \"CONFIRMAR_DADOS\": Confirme os itens/data e pergunte se prefere Retirar na Loja ou Entrega Terceirizada (avançar para \"DEFINIR_LOGISTICA\").\n2. Se Estado Atual for \"DEFINIR_LOGISTICA\":\n   - Se o cliente tirou uma dúvida técnica (ex: duração do gelo, se cabe no carro), responda a dúvida com base nas regras e mantenha em \"DEFINIR_LOGISTICA\" perguntando qual opção ele escolhe.\n   - Se o cliente definiu retirada ou entrega, passe os avisos rápidos (6h de autonomia e comodato de R$ 2.500) e pergunte se prefere pagar via Pix agora ou no dia do evento (avançar para \"DEFINIR_PAGAMENTO\").\n3. Se Estado Atual for \"DEFINIR_PAGAMENTO\":\n   - Se escolheu pagar via Pix agora: avise que o código Pix Copia e Cola será enviado na mensagem seguinte (NÃO invente nem escreva nenhum código Pix no texto) e peça o envio do comprovante. e peça o envio do comprovante (avançar para \"AGUARDAR_COMPROVANTE\" e definir forma_pagamento_definida = \"pix_antecipado\").\n   - Se escolheu pagar no dia/retirada: confirme a reserva e encerre (avançar para \"RESERVA_CONCLUIDA\" e definir forma_pagamento_definida = \"no_balcao\").\n\n### FORMATO OBRIGATÓRIO DE SAÍDA (Responda APENAS um JSON válido, sem markdown):\n{\n  \"reserva_id\": {{ $json.body.reserva_id }},\n  \"cliente\": \"{{ $json.body.cliente }}\",\n  \"data_evento\": \"{{ $json.body.data_evento }}\",\n  \"valor_pedido\": {{ $json.body.valor_pedido }},\n  \"total_sorvetes\": {{ $json.body.total_sorvetes }},\n  \"carrinhos_necessarios\": 1,\n  \"valor_patrimonio_comodato\": 2500,\n  \"estado_anterior\": \"{{ $json.body.estado_atual }}\",\n  \"proximo_estado\": \"DEFINIR_LOGISTICA | DEFINIR_PAGAMENTO | AGUARDAR_COMPROVANTE | RESERVA_CONCLUIDA | TRANSBORDO_HUMANO\",\n  \"logistica_definida\": \"retirada | frete_terceirizado | pendente\",\n  \"forma_pagamento_definida\": \"pix_antecipado | no_balcao | pendente\",\n  \"acionar_humano\": false,\n  \"notificar_gerente\": false,\n  \"motivo_notificacao\": \"Resumo curto para o gerente (preencher se acionar_humano=true ou proximo_estado=RESERVA_CONCLUIDA ou AGUARDAR_COMPROVANTE)\",\n  \"alertas_operacionais\": [\"Lista de avisos internos para a loja\"],\n  \"mensagem_whatsapp\": \"Resposta amigável e direta que será enviada ao cliente no WhatsApp\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        224,
+        0
+      ],
+      "id": "4155b7a3-e765-47b7-952c-d84b9ca4b948",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        208
+      ],
+      "id": "6689f791-536e-4626-ae3d-6541be5fbb8e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "duTTJhfHjqWh9O7X",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Limpeza segura do JSON gerado pela IA (sem usar crases literais)\nconst entrada = $json;\nlet bruto = entrada.text || entrada.output || entrada.content || JSON.stringify(entrada);\nconst marcador = String.fromCharCode(96).repeat(3);\n\nlet limpo = String(bruto).split(marcador + \"json\").join(\"\");\nlimpo = limpo.split(marcador).join(\"\").trim();\n\nlet dados;\ntry {\n  dados = JSON.parse(limpo);\n} catch (err) {\n  return [{ json: { erro_parse: true, texto_original: bruto } }];\n}\n\n// 2. Funções auxiliares para gerar o Pix EMV (Padrão BR Code Banco Central)\nfunction campoEMV(id, valor) {\n  const str = String(valor);\n  const tam = str.length.toString().padStart(2, \"0\");\n  return id + tam + str;\n}\n\nfunction gerarPixCopiaECola(chave, nome, cidade, valorNum, txid) {\n  const conta = campoEMV(\"00\", \"br.gov.bcb.pix\") + campoEMV(\"01\", chave);\n  const valorFormatado = Number(valorNum || 0).toFixed(2);\n  \n  let payload = \n    campoEMV(\"00\", \"01\") +\n    campoEMV(\"26\", conta) +\n    campoEMV(\"52\", \"0000\") +\n    campoEMV(\"53\", \"986\") +\n    campoEMV(\"54\", valorFormatado) +\n    campoEMV(\"58\", \"BR\") +\n    campoEMV(\"59\", nome.substring(0, 25)) +\n    campoEMV(\"60\", cidade.substring(0, 15)) +\n    campoEMV(\"62\", campoEMV(\"05\", txid)) +\n    \"6304\";\n\n  let crc = 0xFFFF;\n  for (let i = 0; i < payload.length; i++) {\n    crc ^= payload.charCodeAt(i) << 8;\n    for (let j = 0; j < 8; j++) {\n      crc = (crc & 0x8000) !== 0 ? (crc << 1) ^ 0x1021 : crc << 1;\n    }\n  }\n  const crcHex = (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, \"0\");\n  return payload + crcHex;\n}\n\n// 3. Gera o Pix somente se o cliente optou por adiantar via Pix\ndados.pix_copia_e_cola = null;\nif (dados.forma_pagamento_definida === \"pix_antecipado\" || dados.proximo_estado === \"AGUARDAR_COMPROVANTE\") {\n  dados.pix_copia_e_cola = gerarPixCopiaECola(\n    \"38467951000148\",\n    \"HEVON COMERCIO LTDA\",\n    \"BARUERI\",\n    dados.valor_pedido,\n    \"RESERVA\" + dados.reserva_id\n  );\n}\n\n// 4. Define se o e-mail do gerente deve ser disparado nesta etapa\ndados.deve_enviar_email = Boolean(\n  dados.acionar_humano === true || \n  dados.proximo_estado === \"RESERVA_CONCLUIDA\" || \n  dados.proximo_estado === \"AGUARDAR_COMPROVANTE\"\n);\n\nreturn [{ json: dados }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "f033cdf1-2c61-41fc-9b04-be8c15781b65",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "fromEmail": "viniiciius.monteiro@gmail.com",
+        "toEmail": "viniiciius.monteiro@gmail.com",
+        "subject": "=[NOVA RESERVA #{{ $json.reserva_id }}] {{ $json.cliente }} - Data: {{ $json.data_evento }}",
+        "html": "=<div style=\"font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;\">\n  <div style=\"background-color: #0c2340; color: #ffffff; padding: 18px 24px;\">\n    <h2 style=\"margin: 0; font-size: 20px;\">Oggi Barueri - Triagem de Reserva #{{ $json.reserva_id }}</h2>\n    <p style=\"margin: 4px 0 0; font-size: 14px; opacity: 0.85;\">Data do Evento: <strong>{{ $json.data_evento }}</strong> | Cliente: <strong>{{ $json.cliente }}</strong></p>\n  </div>\n\n  <div style=\"padding: 24px;\">\n    <!-- Alertas Operacionais -->\n    <div style=\"background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 20px;\">\n      <strong style=\"color: #856404;\">Alertas de Triagem:</strong>\n      <p style=\"margin: 4px 0 0; color: #856404; font-size: 14px;\">{{ $json.alertas_operacionais.join(' | ') }}</p>\n    </div>\n\n    <!-- Parâmetros de Comodato e Logística -->\n    <table style=\"width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;\">\n      <tr>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Total de Sorvetes:</strong></td>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.total_sorvetes }} unidades</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Carrinhos Necessários:</strong></td>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.carrinhos_necessarios }} un. (Comodato: R$ {{ $json.valor_patrimonio_comodato }})</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Autonomia Térmica:</strong></td>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">Até {{ $json.autonomia_refrigeracao_horas }} horas</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Logística:</strong></td>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.logistica_sugerida }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Prazo de Devolução:</strong></td>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.prazo_devolucao }}</td>\n      </tr>\n    </table>\n\n    <!-- Mensagem para Copiar e Colar no WhatsApp -->\n    <h3 style=\"font-size: 15px; color: #25d366; margin-bottom: 8px;\">Mensagem Pronta para WhatsApp:</h3>\n    <div style=\"background-color: #f7f9fa; border: 1px solid #d1d7db; border-radius: 6px; padding: 14px; font-size: 13px; line-height: 1.5; color: #333; white-space: pre-wrap;\">{{ $json.mensagem_whatsapp }}</div>\n  </div>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1360,
+        -16
+      ],
+      "id": "c91c4be9-9904-4909-9c6d-cf4efb83df1e",
+      "name": "Send an Email",
+      "webhookId": "fef3b77f-bf39-4657-b743-575f5303145b",
+      "credentials": {
+        "smtp": {
+          "id": "4cC9Lpwb9tuCjkOr",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "0d85eba1-22cb-422e-b86d-b05c28ddd1c5",
+              "leftValue": "={{ $json.deve_enviar_email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "00b2ca97-1c62-4d36-9753-6cc226305195",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        848,
+        0
+      ],
+      "id": "9f24da08-603f-4eb1-923d-0fb14a87fbd2",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "51653f9c-9a2e-4c49-a750-48d7fc8fdddc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "96feb7633ae943b7d25cbb1b0500375fa8836a417f630fab60359c54e7b4810e"
+  },
+  "nodeGroups": [],
+  "id": "RQXKD3dvXeeWZIyL",
+  "tags": []
+}
